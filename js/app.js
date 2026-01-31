@@ -462,6 +462,71 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
+// ---- PWA Install Prompt ----
+let deferredPrompt = null;
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || window.navigator.standalone === true;
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function showInstallBanner() {
+  if (isStandalone()) return; // already installed
+  if (localStorage.getItem("installDismissed")) return;
+
+  const banner = document.getElementById("install-banner");
+  const instructions = document.getElementById("install-instructions");
+  const installBtn = document.getElementById("install-btn");
+
+  if (isIOS()) {
+    instructions.innerHTML = 'Tap <strong>Share</strong> ↗ then <strong>"Add to Home Screen"</strong>';
+    installBtn.textContent = "Got it";
+    installBtn.addEventListener("click", () => {
+      banner.classList.remove("show");
+      localStorage.setItem("installDismissed", "1");
+    });
+  } else if (deferredPrompt) {
+    instructions.textContent = "Add to your home screen for the full experience";
+    installBtn.addEventListener("click", () => {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        deferredPrompt = null;
+        banner.classList.remove("show");
+      });
+    });
+  } else {
+    // Fallback for browsers without beforeinstallprompt
+    instructions.innerHTML = 'Use your browser menu to <strong>"Add to Home Screen"</strong>';
+    installBtn.textContent = "Got it";
+    installBtn.addEventListener("click", () => {
+      banner.classList.remove("show");
+      localStorage.setItem("installDismissed", "1");
+    });
+  }
+
+  document.getElementById("install-dismiss").addEventListener("click", () => {
+    banner.classList.remove("show");
+    localStorage.setItem("installDismissed", "1");
+  });
+
+  banner.classList.add("show");
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallBanner();
+});
+
+window.addEventListener("appinstalled", () => {
+  document.getElementById("install-banner").classList.remove("show");
+  showToast("App installed! You're all set!");
+});
+
 // ---- Init ----
 function init() {
   // Nav
@@ -496,6 +561,11 @@ function init() {
   // Show home
   showScreen("screen-home");
   renderStats();
+
+  // Show install banner for iOS or fallback (Android fires beforeinstallprompt instead)
+  if (!isStandalone() && (isIOS() || !("BeforeInstallPromptEvent" in window))) {
+    setTimeout(showInstallBanner, 1500);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
