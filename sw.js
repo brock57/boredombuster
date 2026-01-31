@@ -1,4 +1,4 @@
-const CACHE_NAME = "boredom-buster-v1";
+const CACHE_NAME = "boredom-buster-v2";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();

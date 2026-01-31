@@ -476,7 +476,7 @@ function isIOS() {
 
 function showInstallBanner() {
   if (isStandalone()) return; // already installed
-  if (localStorage.getItem("installDismissed")) return;
+  if (sessionStorage.getItem("installDismissed")) return;
 
   const banner = document.getElementById("install-banner");
   const instructions = document.getElementById("install-instructions");
@@ -487,7 +487,7 @@ function showInstallBanner() {
     installBtn.textContent = "Got it";
     installBtn.addEventListener("click", () => {
       banner.classList.remove("show");
-      localStorage.setItem("installDismissed", "1");
+      sessionStorage.setItem("installDismissed", "1");
     });
   } else if (deferredPrompt) {
     instructions.textContent = "Add to your home screen for the full experience";
@@ -504,7 +504,7 @@ function showInstallBanner() {
     installBtn.textContent = "Got it";
     installBtn.addEventListener("click", () => {
       banner.classList.remove("show");
-      localStorage.setItem("installDismissed", "1");
+      sessionStorage.setItem("installDismissed", "1");
     });
   }
 
