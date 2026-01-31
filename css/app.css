@@ -628,7 +628,7 @@ html, body {
 .install-banner {
   display: none;
   position: fixed;
-  bottom: 70px;
+  bottom: 90px;
   left: 0;
   right: 0;
   max-width: 430px;
