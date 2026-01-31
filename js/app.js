@@ -2,6 +2,77 @@
    BOREDOM BUSTER - App Logic
    ============================================= */
 
+// ---- Sound Engine (Web Audio API) ----
+const SoundEngine = (() => {
+  let ctx = null;
+
+  function getCtx() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+
+  function playTone(freq, duration, type = "sine", volume = 0.1, delay = 0) {
+    const c = getCtx();
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+    gain.gain.setValueAtTime(volume, c.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+    osc.start(c.currentTime + delay);
+    osc.stop(c.currentTime + delay + duration);
+  }
+
+  return {
+    // Quick click for wheel tick - gets slower/lower as wheel decelerates
+    tick(speed) {
+      // speed: 0 (stopped) to 1 (full speed)
+      const freq = 600 + speed * 800;
+      const vol = 0.04 + speed * 0.06;
+      playTone(freq, 0.03, "square", vol);
+    },
+
+    // Triumphant ascending chime: C5 → E5 → G5 → C6
+    reveal() {
+      const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+      notes.forEach((freq, i) => {
+        playTone(freq, 0.25, "sine", 0.12, i * 0.12);
+      });
+      // Shimmer
+      playTone(1568, 0.5, "sine", 0.05, 0.48);
+    },
+
+    // Magical sparkle: descending twinkling notes
+    chestOpen() {
+      const sparkle = [1200, 1400, 1100, 1500, 1000, 1600, 900, 1700];
+      sparkle.forEach((freq, i) => {
+        playTone(freq, 0.12, "sine", 0.08, i * 0.06);
+      });
+      // Deep resonant boom underneath
+      playTone(120, 0.6, "sine", 0.15, 0.1);
+      // Final shimmer
+      playTone(2000, 0.4, "triangle", 0.06, 0.5);
+    },
+
+    // Short ascending fanfare
+    achievement() {
+      const fanfare = [392, 494, 587, 784]; // G4, B4, D5, G5
+      fanfare.forEach((freq, i) => {
+        playTone(freq, 0.15, "square", 0.06, i * 0.1);
+        playTone(freq * 1.5, 0.15, "sine", 0.04, i * 0.1); // harmony
+      });
+      // Final sustain
+      playTone(784, 0.4, "sine", 0.08, 0.4);
+      playTone(988, 0.4, "sine", 0.05, 0.4);
+    }
+  };
+})();
+
 // ---- Data ----
 const IDEAS = {
   outdoor: [
@@ -232,6 +303,7 @@ function spinWheel() {
   const totalSpin = targetRotation;
   const duration = 4000;
   const startTime = Date.now();
+  let lastTickAngle = startRotation;
 
   function animate() {
     const elapsed = Date.now() - startTime;
@@ -240,6 +312,14 @@ function spinWheel() {
     // Ease out cubic
     const eased = 1 - Math.pow(1 - progress, 3);
     currentRotation = startRotation + totalSpin * eased;
+
+    // Tick sound every time we cross a slice boundary
+    const angleDelta = Math.abs(currentRotation - lastTickAngle);
+    if (angleDelta >= sliceAngle) {
+      const speed = 1 - progress; // slows down as progress increases
+      SoundEngine.tick(speed);
+      lastTickAngle = currentRotation;
+    }
 
     drawWheel();
 
@@ -273,6 +353,7 @@ function onSpinComplete(idea) {
 }
 
 function showResult(idea) {
+  SoundEngine.reveal();
   const overlay = document.getElementById("result-overlay");
   document.getElementById("result-emoji").textContent = idea.emoji;
   document.getElementById("result-text").textContent = idea.text;
@@ -344,7 +425,10 @@ function checkAchievements() {
   if (newUnlocks.length > 0) {
     saveState();
     newUnlocks.forEach((ach, i) => {
-      setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`), i * 1500);
+      setTimeout(() => {
+        SoundEngine.achievement();
+        showToast(`${ach.icon} Achievement: ${ach.name}!`);
+      }, i * 1500);
     });
   }
 }
@@ -432,6 +516,7 @@ function openChest() {
   checkAchievements();
 
   // Show reveal
+  SoundEngine.chestOpen();
   const overlay = document.getElementById("chest-overlay");
   document.getElementById("chest-reward-icon").textContent = reward.emoji;
   document.getElementById("chest-reward-label").textContent = reward.label;
